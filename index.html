@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据门户 - Vega SQL实验室</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", -apple-system, "PingFang SC", sans-serif;
+    font-size: 13px; color: #333; background: #f0f2f5; overflow: hidden;
+  }
+  .app { display: flex; flex-direction: column; height: 100vh; }
+  .view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .main-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  svg { display: block; flex-shrink: 0; }
+
+  /* 顶部导航栏 */
+  .topbar { height: 48px; background: #1F3866; display: flex; align-items: center;
+    border-bottom: 1px solid #1F3866; flex-shrink: 0; }
+  .topbar .hamburger { width: 48px; height: 48px; display: flex; align-items: center;
+    justify-content: center; background: #1F3866; color: #fff; cursor: pointer; }
+  .topbar .portal-name { padding: 0 24px 0 16px; font-size: 15px; color: #fff; font-weight: 500; }
+  .topbar .qa-select { display: flex; align-items: center; gap: 6px; padding: 0 16px; color: #fff; cursor: pointer; }
+  .topbar .qa-select .dot { width: 16px; height: 16px; border-radius: 50%;
+    background: linear-gradient(135deg, #36cfc9, #1890ff); display: inline-block; }
+  .topbar .home { display: flex; align-items: center; gap: 5px; padding: 0 16px; color: #fff; cursor: pointer; }
+  .topbar .search-box { flex: 1; max-width: 560px; margin: 0 auto; height: 30px; background: #fff;
+    border: 1px solid #dbe1ea; border-radius: 4px; display: flex; align-items: center; padding: 0 12px; color: #999; gap: 8px; }
+  .topbar .right-tools { display: flex; align-items: center; gap: 14px; padding: 0 16px; margin-left: auto; }
+  .topbar .ai-btn { background: #0444F0; color: #fff; height: 30px; padding: 0 12px; border-radius: 4px;
+    display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; }
+  .topbar .ticon { color: #fff; cursor: pointer; display:flex; align-items:center; }
+  .topbar .user { display: flex; align-items: center; gap: 6px; color: #fff; cursor: pointer; }
+  .topbar .user .avatar { width: 22px; height: 22px; border-radius: 50%; background: #7a869a; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size: 11px; }
+
+  /* 主体 */
+  .body { display: flex; flex: 1; overflow: hidden; }
+
+  /* 左侧菜单 */
+  .sidebar { width: 168px; background: #1A2A47; color: #c9cdd4; flex-shrink: 0; display: flex;
+    flex-direction: column; overflow-y: auto; }
+  .sidebar .logo { height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 18px;
+    font-size: 18px; font-weight: 600; color: #fff; border-bottom: 1px solid #2a3d5f; flex-shrink: 0; }
+  .sidebar .logo .v { width: 22px; height:22px; background:#2f6bff; border-radius:4px;
+    display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff; font-weight:700; }
+
+  /* Omega 目录（二级产品导航） */
+  .omega-divider { height: 46px; display: flex; align-items: center; gap: 8px; padding: 0 18px;
+    font-size: 17px; font-weight: 600; color: #fff; border-top: 1px solid #2a3d5f;
+    border-bottom: 1px solid #2a3d5f; background: #16233d; margin-top: 6px; flex-shrink: 0; }
+  .omega-divider .og-logo { width: 22px; height:22px; background:#0fb9b1; border-radius:4px;
+    display:flex; align-items:center; justify-content:center; color:#fff; }
+  .menu-item { height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 18px;
+    cursor: pointer; font-size: 13.5px; color: #c9cdd4; }
+  .menu-item:hover { background: #24395c; }
+  .menu-item .arrow { margin-left: auto; display:flex; align-items:center; color:#8a8fa0; }
+  .submenu { flex-shrink: 0; }
+  .submenu .sub-item { height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0 18px 0 44px;
+    cursor: pointer; font-size: 13px; color: #c9cdd4; }
+  .submenu .sub-item.active { background: #2f6bff; color: #fff; }
+  .submenu .sub-item .beta { font-size: 10px; color:#8a8fa0; margin-left:4px; font-style:italic; }
+
+  /* 主内容 */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background:#fff; }
+
+  /* 面包屑行 */
+  .breadcrumb-row { height: 40px; display: flex; align-items: center; padding: 0 12px;
+    border-bottom: 1px solid #eee; gap: 12px; }
+  .breadcrumb-row .collapse-icon { color:#666; cursor:pointer; display:flex; align-items:center; }
+  .breadcrumb-row .crumb { color:#333; }
+  .breadcrumb-row .global-search { width: 320px; height: 28px; background:#f5f5f5; border:1px solid #e8e8e8;
+    border-radius:4px; display:flex; align-items:center; padding:0 10px; color:#999; gap:6px; }
+  .breadcrumb-row .tools { margin-left:auto; display:flex; align-items:center; gap:16px; color:#2f6bff; font-size:13px; }
+  .breadcrumb-row .tools .t { display:flex; align-items:center; gap:4px; cursor:pointer; }
+  .breadcrumb-row .tools .gray { color:#666; }
+
+  /* tab行 */
+  .tab-row { height: 34px; display:flex; align-items:center; padding: 0 12px; border-bottom:1px solid #eee; gap:6px; }
+  .tab-row .tab { padding: 4px 14px; background:#eaf1ff; color:#2f6bff; border-radius:4px 4px 0 0;
+    font-size:13px; border:1px solid #d0e0ff; border-bottom:none; }
+  .tab-row .add { color:#666; cursor:pointer; font-size:16px; padding:0 6px; }
+
+  /* 工作区 */
+  .workspace { flex:1; display:flex; overflow:hidden; }
+
+  /* 数据源面板 */
+  .datasource { width: 250px; border-right:1px solid #eee; display:flex; flex-direction:column;
+    flex-shrink:0; padding: 8px; }
+  .datasource .ds-select { height:30px; border:1px solid #d9d9d9; border-radius:4px;
+    display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#333; margin-bottom:8px; cursor:pointer; }
+  .datasource .ds-search { display:flex; gap:6px; margin-bottom:8px; }
+  .datasource .ds-search input { flex:1; height:28px; border:1px solid #d9d9d9; border-radius:4px;
+    padding:0 8px; font-size:12px; color:#999; }
+  .datasource .ds-search .refresh { width:28px; height:28px; border:1px solid #d9d9d9; border-radius:4px;
+    display:flex; align-items:center; justify-content:center; color:#666; cursor:pointer; }
+  .tree { flex:1; overflow-y:auto; font-size:13px; }
+  .tree-node { display:flex; align-items:center; gap:5px; height:26px; padding:0 4px; cursor:pointer;
+    color:#333; white-space:nowrap; overflow:hidden; }
+  .tree-node:hover { background:#f5f7fa; }
+  .tree-node .tw { color:#999; width:12px; display:flex; align-items:center; justify-content:center; }
+  .tree-node .tw.leaf svg { visibility:hidden; }
+  .tree-node .ic { color:#8a8fa0; display:flex; align-items:center; }
+  .tree-node.db .ic { color:#5b8ff9; }
+  .indent-1 { padding-left:12px; }
+  .indent-2 { padding-left:24px; }
+
+  /* 编辑器区 */
+  .editor-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .editor-tabs { height:30px; display:flex; align-items:center; gap:16px; padding:0 14px; border-bottom:1px solid #eee; }
+  .editor-tabs .et { color:#666; cursor:pointer; padding:4px 0; }
+  .editor-tabs .et.active { color:#2f6bff; border-bottom:2px solid #2f6bff; }
+  .code-editor { flex:1; display:flex; font-family:"Consolas","Courier New",monospace; font-size:13px;
+    overflow:auto; min-height:120px; }
+  .code-editor .gutter { background:#fafafa; color:#999; text-align:right; padding:8px 10px 8px 0;
+    user-select:none; border-right:1px solid #eee; line-height:20px; }
+  .code-editor .code { padding:8px 12px; line-height:20px; flex:1; }
+  .code-editor .kw { color:#0000ff; }
+  .code-editor .code div { white-space:pre; }
+
+  /* 编辑器工具栏 */
+  .editor-toolbar { height:40px; display:flex; align-items:center; gap:10px; padding:0 12px;
+    border-top:1px solid #eee; border-bottom:1px solid #eee; flex-shrink:0; }
+  .btn { height:28px; padding:0 12px; border-radius:4px; border:1px solid #d9d9d9; background:#fff; color:#333;
+    cursor:pointer; display:flex; align-items:center; gap:4px; font-size:13px; }
+  .btn.primary { background:#2f6bff; color:#fff; border-color:#2f6bff; }
+  .btn.split { padding-right:6px; }
+  .editor-toolbar .spacer { margin-left:auto; }
+  .editor-toolbar .field { display:flex; align-items:center; gap:6px; color:#666; font-size:13px; }
+  .editor-toolbar .field .sel { border:1px solid #d9d9d9; border-radius:4px; height:26px; padding:0 8px;
+    display:flex; align-items:center; gap:14px; color:#333; }
+  .editor-toolbar .engines { display:flex; align-items:center; gap:12px; color:#333; }
+  .editor-toolbar .engines label { display:flex; align-items:center; gap:4px; cursor:pointer; }
+  .editor-toolbar .engines input { accent-color:#2f6bff; }
+  .editor-toolbar .more { color:#666; cursor:pointer; display:flex; align-items:center; }
+  .info-ic { color:#bbb; display:inline-flex; align-items:center; vertical-align:middle; }
+
+  /* 历史查询 */
+  .history { flex-shrink:0; display:flex; flex-direction:column; max-height:420px; }
+  .history .h-title { padding:8px 14px 4px; font-weight:600; color:#333; }
+  .history .filters { display:flex; align-items:center; gap:10px; padding:4px 14px 10px; flex-wrap:wrap;
+    border-bottom:1px solid #f0f0f0; }
+  .history .filters .fl { display:flex; align-items:center; gap:6px; color:#666; font-size:13px; }
+  .history .filters input, .history .filters .fake-input { height:28px; border:1px solid #d9d9d9;
+    border-radius:4px; padding:0 8px; font-size:12px; color:#999; display:flex; align-items:center; }
+  .history .filters .time-input { width:300px; justify-content:space-between; gap:8px; }
+  .history .filters .state-input { width:120px; justify-content:space-between; }
+  .history .filters .reset { color:#2f6bff; cursor:pointer; margin-left:4px; }
+  .history .table { overflow:auto; min-height:300px; }
+  .history table { width:100%; border-collapse:collapse; font-size:13px; }
+  .history th { text-align:left; padding:8px 14px; color:#333; font-weight:600; background:#fafafa;
+    position:sticky; top:0; white-space:nowrap; z-index:20; }
+  .history td { padding:10px 14px; color:#333; border-bottom:1px solid #f0f0f0; vertical-align:top; }
+  .history td.sql { white-space:pre-line; color:#555; font-family:"Consolas",monospace; font-size:12px; }
+  .history .tag-fail { display:inline-flex; align-items:center; gap:4px; background:#fff1f0; color:#f5222d;
+    border:1px solid #ffccc7; padding:2px 8px; border-radius:3px; font-size:12px; }
+  .history .tag-success { display:inline-flex; align-items:center; gap:4px; background:#f6ffed; color:#52c41a;
+    border:1px solid #b7eb8f; padding:2px 8px; border-radius:3px; font-size:12px; }
+  .history .tag-running { display:inline-flex; align-items:center; gap:4px; background:#e6f4ff; color:#1677ff;
+    border:1px solid #91caff; padding:2px 8px; border-radius:3px; font-size:12px; }
+  .history .status-cell { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .history .tag-fail, .history .tag-success, .history .tag-running { white-space:nowrap; }
+  /* 智能报错分析入口：蓝紫渐变胶囊 + 白色文字 */
+  .ai-analyze { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; background:linear-gradient(90deg,#3E6BF0 0%,#7C5CF0 100%); color:#fff;
+    border:none; border-radius:999px; padding:4px 14px; font-size:13px; font-weight:500;
+    line-height:1; font-family:"Microsoft YaHei",sans-serif; white-space:nowrap;
+    box-shadow:0 1px 3px rgba(62,107,240,.28); }
+  .ai-analyze:hover { filter:brightness(1.07); }
+  .history .op { color:#2f6bff; cursor:pointer; margin-right:12px; white-space:nowrap; }
+  .history td.ops { white-space:nowrap; }
+  .history td.ops .op:last-child { margin-right:0; }
+
+  /* 底部标签 */
+  .bottom-tabs { height:34px; display:flex; align-items:center; gap:24px; padding:0 14px;
+    border-top:1px solid #eee; background:#fafafa; flex-shrink:0; }
+  .bottom-tabs .bt { color:#666; cursor:pointer; }
+  .bottom-tabs .bt.active { color:#2f6bff; border-bottom:2px solid #2f6bff; height:34px; display:flex; align-items:center; }
+
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:#d0d0d0; border-radius:4px; }
+
+  /* ===== 智能分析弹框 ===== */
+  .modal-mask { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none;
+    align-items:center; justify-content:center; z-index:1000; }
+  .modal-mask.show { display:flex; }
+  .modal { width:900px; max-width:94vw; height:720px; max-height:90vh; background:#fff; border-radius:8px;
+    display:flex; flex-direction:column; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,0.25);
+    animation:modalIn .2s ease; }
+  @keyframes modalIn { from { opacity:0; transform:translateY(12px) scale(.98); } to { opacity:1; transform:none; } }
+  .modal-head { display:flex; align-items:flex-start; padding:16px 20px 14px; border-bottom:1px solid #f0f0f0; }
+  .modal-head .m-headtext .m-titleline { display:flex; align-items:center; gap:8px; }
+  .modal-head .m-title { font-size:16px; font-weight:600; color:#1a1a1a; }
+  .modal-head .m-ai { padding:1px 6px; border-radius:4px; background:#eef2ff; color:#2f6bff;
+    font-weight:700; font-size:11px; letter-spacing:-0.3px; border:1px solid #d6e0ff; }
+  .modal-head .m-sub { font-size:12px; color:#8a8fa0; margin-top:6px; }
+  .modal-head .m-close { margin-left:auto; cursor:pointer; color:#999; display:flex; align-items:center; padding:2px; }
+  .modal-head .m-close:hover { color:#333; }
+
+  /* 主体两栏 */
+  .modal-body { flex:1; min-height:0; display:flex; gap:16px; padding:18px 20px; overflow:hidden;
+    align-items:stretch; }
+  .mb-left { flex:1; min-width:0; overflow-y:auto; padding-right:8px; }
+  .mb-right { width:210px; flex-shrink:0; }
+
+  /* 错误信息框 */
+  .err-block { position:relative; background:#fff1f0; border:1px solid #ffd6d2; border-radius:6px;
+    padding:12px 14px; margin-bottom:16px; }
+  .err-block .eb-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .err-block .eb-title { color:#f5222d; font-weight:600; font-size:13px; }
+  .err-block .eb-copy { color:#f5222d; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:3px; }
+  .err-block .eb-copy:hover { text-decoration:underline; }
+  .err-block .eb-text { font-family:"Consolas",monospace; font-size:12px; color:#a8071a;
+    white-space:pre-wrap; line-height:1.7; }
+
+  /* AI 分析结论卡 */
+  .concl { border:1px solid #eef1f6; border-radius:6px; padding:16px 18px; }
+  .concl .cl-title { font-weight:600; color:#1a1a1a; font-size:14px; margin-bottom:14px; }
+  .concl .cl-sec { margin-bottom:16px; }
+  .concl .cl-sec:last-child { margin-bottom:0; }
+  .concl .cl-h { font-weight:600; color:#333; font-size:13px; margin-bottom:6px; }
+  .concl .cl-p { font-size:13px; color:#555; line-height:1.7; }
+  .concl ul { margin:0; padding-left:20px; }
+  .concl ul li { font-size:13px; color:#555; line-height:1.9; }
+  .concl ol { margin:0; padding-left:20px; }
+  .concl ol li { font-size:13px; color:#555; line-height:1.9; }
+  .concl .cl-docs { display:flex; flex-direction:column; gap:6px; }
+  .concl .cl-docs a { color:#2f6bff; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; width:fit-content; }
+  .concl .cl-docs a:hover { text-decoration:underline; }
+
+  /* AI 分析中 */
+  .analyzing { display:flex; align-items:center; gap:10px; color:#2f6bff; font-size:13px; padding:20px 4px; }
+  .spinner { width:16px; height:16px; border:2px solid #d5e0ff; border-top-color:#2f6bff;
+    border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* 流式输出 */
+  .stream-hint { display:inline-flex; align-items:center; gap:6px; color:#2f6bff; font-size:12px;
+    font-weight:400; margin-left:10px; }
+  .stream-hint .spinner { width:12px; height:12px; }
+  .stream-caret { display:inline-block; width:7px; height:14px; background:#2f6bff; margin-left:2px;
+    vertical-align:-2px; border-radius:1px; animation:blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  .cl-sec.pending { display:none; }
+  .cl-sec.appear { animation:secIn .35s ease; }
+  .feedback.pending { display:none; }
+  .feedback.appear { animation:secIn .35s ease; }
+  @keyframes secIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  .concl li.appear { animation:secIn .3s ease; }
+
+  /* 反馈行 */
+  .feedback { display:flex; align-items:center; gap:10px; font-size:13px; color:#666; margin-top:16px; }
+  .feedback .fb { cursor:pointer; display:flex; align-items:center; gap:5px; padding:5px 12px; border-radius:4px;
+    border:1px solid #e0e0e0; background:#fff; color:#666; font-size:13px; }
+  .feedback .fb:hover { border-color:#2f6bff; color:#2f6bff; }
+  .feedback .fb.active { border-color:#2f6bff; color:#2f6bff; background:#eaf1ff; }
+
+  /* 右侧转人工卡片 */
+  .consult-card { background:#f7f9fc; border:1px solid #eef1f6; border-radius:6px; padding:16px; }
+  .consult-card .cc-title { font-weight:600; color:#333; font-size:13px; margin-bottom:8px; }
+  .consult-card .cc-desc { font-size:12px; color:#8a8fa0; line-height:1.7; margin-bottom:14px; }
+  .consult-card .cc-eta { font-size:12px; color:#8a8fa0; margin-top:10px; text-align:center; }
+
+  /* 补充说明填写框 */
+  .consult-card .cc-field { margin-bottom:14px; }
+  .consult-card .cc-label { font-size:12px; color:#333; font-weight:600; margin-bottom:6px; }
+  .consult-card .cc-textarea { width:100%; box-sizing:border-box; min-height:90px; resize:vertical;
+    padding:8px 10px; border:1px solid #dfe3ec; border-radius:5px; background:#fff;
+    font-family:inherit; font-size:12px; line-height:1.6; color:#333; outline:none; transition:border-color .2s; }
+  .consult-card .cc-textarea::placeholder { color:#b7bccb; }
+  .consult-card .cc-textarea:focus { border-color:#2f6bff; }
+
+  /* 通用按钮 */
+  .btn-consult { height:36px; padding:0 16px; border-radius:5px; border:none; cursor:pointer; font-size:13px;
+    background:#2f6bff; color:#fff; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:500; width:100%; }
+  .btn-consult:hover { background:#1c56e6; }
+  .btn-consult.outline { background:#fff; color:#2f6bff; border:1px solid #2f6bff; width:auto; padding:0 16px; }
+  .btn-consult.outline:hover { background:#eaf1ff; }
+  .btn-ghost { height:36px; padding:0 18px; border-radius:5px; border:1px solid #d9d9d9; cursor:pointer;
+    font-size:13px; background:#fff; color:#333; }
+  .btn-ghost:hover { border-color:#2f6bff; color:#2f6bff; }
+
+  /* ===== 简易 AI 诊断弹窗 ===== */
+  .modal.simple { width:560px; max-width:94vw; height:auto; max-height:88vh; }
+  .modal-body.simple { display:block; padding:18px 22px 22px; overflow-y:auto; }
+  .diag-err { background:#fff1f0; border:1px solid #ffd6d2; border-radius:6px; padding:10px 12px; margin-bottom:16px; }
+  .diag-err .de-h { display:flex; align-items:center; justify-content:space-between; font-size:12px;
+    color:#f5222d; font-weight:600; margin-bottom:6px; }
+  .diag-err .de-copy { cursor:pointer; }
+  .diag-err .de-copy:hover { text-decoration:underline; }
+  .diag-err .de-t { font-family:"Consolas",monospace; font-size:12px; color:#a8071a; line-height:1.65;
+    white-space:pre-wrap; max-height:120px; overflow:auto; }
+  .diag-field { margin-bottom:18px; }
+  .diag-field .df-label { font-size:13px; color:#333; font-weight:600; margin-bottom:8px; }
+  .diag-field .df-label .opt { color:#8a8fa0; font-weight:400; font-size:12px; margin-left:4px; }
+  .diag-field textarea { width:100%; box-sizing:border-box; min-height:112px; resize:vertical;
+    padding:10px 12px; border:1px solid #dfe3ec; border-radius:6px; font-family:inherit; font-size:13px;
+    line-height:1.6; color:#333; outline:none; transition:border-color .2s; }
+  .diag-field textarea::placeholder { color:#b7bccb; }
+  .diag-field textarea:focus { border-color:#2f6bff; }
+  .diag-foot { display:flex; align-items:center; justify-content:flex-end; gap:12px; }
+  .diag-foot .btn-consult { width:auto; padding:0 22px; }
+  .diag-loading { display:flex; align-items:center; justify-content:center; gap:10px;
+    color:#2f6bff; font-size:13px; padding:52px 0; }
+  .diag-result { text-align:center; padding:8px 4px 4px; }
+  .diag-result .dr-icon { width:56px; height:56px; margin:0 auto 14px; border-radius:50%;
+    background:#eaf1ff; color:#2f6bff; display:flex; align-items:center; justify-content:center; }
+  .diag-result .dr-title { font-size:16px; font-weight:600; color:#1a1a1a; margin-bottom:8px; }
+  .diag-result .dr-desc { font-size:13px; color:#666; line-height:1.75; margin-bottom:20px; }
+  .diag-result .dr-desc b { color:#2f6bff; }
+  .diag-actions { display:flex; align-items:center; justify-content:center; gap:12px; }
+  .diag-actions .btn-consult { width:auto; padding:0 18px; }
+
+  /* 转人工 + 快速路由 POPO 群 */
+  .consult-actions { display:flex; align-items:center; gap:8px; }
+  .consult-actions .btn-consult { flex:1; }
+  .popo-route { width:34px; height:34px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; cursor:pointer; flex-shrink:0; position:relative; }
+  .popo-route img { width:28px; height:28px; display:block; border-radius:50%; transition:transform .2s; }
+  .popo-route:not(.disabled):hover img { transform:scale(1.1); }
+  .popo-route.disabled { opacity:.45; cursor:not-allowed; }
+  .popo-route::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 8px); right:0; left:auto;
+    transform:none; background:rgba(0,0,0,0.78); color:#fff; padding:4px 10px; border-radius:4px;
+    font-size:12px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .15s; z-index:10; }
+  .popo-route:hover::after { opacity:1; }
+
+  /* 底部栏 */
+  .modal-foot { border-top:1px solid #f0f0f0; padding:14px 20px; display:flex; align-items:center;
+    justify-content:flex-end; gap:12px; background:#fff; flex-shrink:0; }
+
+  .toast { position:fixed; top:40px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8);
+    color:#fff; padding:8px 18px; border-radius:20px; font-size:13px; z-index:2000; opacity:0;
+    transition:opacity .25s; pointer-events:none; }
+  .toast.show { opacity:1; }
+
+  /* ===== Omega 视图：作业实例 / 实例详情 ===== */
+  .og-logo-box { width:26px; height:26px; background:#12b5a8; border-radius:6px;
+    display:flex; align-items:center; justify-content:center; color:#fff; }
+  #omegaView .sidebar .logo { font-size:19px; letter-spacing:.5px; }
+
+  /* 面包屑 */
+  .og-crumb-row { height:48px; display:flex; align-items:center; padding:0 20px;
+    border-bottom:1px solid #eee; gap:12px; flex-shrink:0; }
+  .og-crumb-row .fold { color:#666; display:flex; align-items:center; cursor:pointer; }
+  .og-crumb-row .path { color:#333; font-size:14px; }
+  .og-crumb-row .right { margin-left:auto; display:flex; gap:24px; }
+  .og-crumb-row .right .r { display:flex; align-items:center; gap:5px; color:#555;
+    font-size:13px; cursor:pointer; }
+  .og-crumb-row .right .r:hover { color:#2f6bff; }
+
+  /* 操作行 */
+  .og-action-row { min-height:52px; display:flex; align-items:center; padding:10px 20px;
+    gap:12px; flex-shrink:0; }
+  .og-btn-rerun { background:#ff8c1a; color:#fff; height:32px; padding:0 22px; border-radius:4px;
+    font-size:14px; display:flex; align-items:center; cursor:pointer; }
+  .og-btn-rerun:hover { background:#f57f0c; }
+  .og-action-row .right { margin-left:auto; display:flex; gap:10px; }
+  .og-btn-line { height:30px; padding:0 14px; border:1px solid #d9d9d9; border-radius:4px;
+    background:#fff; color:#333; display:flex; align-items:center; gap:5px; cursor:pointer; font-size:13px; }
+  .og-btn-line:hover { border-color:#2f6bff; color:#2f6bff; }
+
+  /* tab */
+  .og-tabs { height:44px; display:flex; align-items:center; gap:34px; padding:0 20px;
+    border-bottom:1px solid #eee; flex-shrink:0; }
+  .og-tabs .t { color:#666; font-size:14px; cursor:pointer; height:44px; display:flex;
+    align-items:center; }
+  .og-tabs .t:hover { color:#2f6bff; }
+  .og-tabs .t.active { color:#2f6bff; border-bottom:2px solid #2f6bff; font-weight:500; }
+
+  /* 日志区 */
+  .og-log-area { flex:1; overflow:auto; padding:16px 20px; min-height:0; }
+  .og-log-ctrl { display:flex; align-items:center; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
+  .og-log-ctrl .lbl { color:#333; font-size:13px; font-weight:500; }
+  .og-log-ctrl .fake-input { height:30px; border:1px solid #d9d9d9; border-radius:4px; padding:0 10px;
+    display:flex; align-items:center; gap:24px; color:#333; font-size:13px; cursor:pointer; }
+  .og-radio { display:flex; align-items:center; gap:5px; color:#555; font-size:13px; cursor:pointer; }
+  .og-radio input { accent-color:#2f6bff; }
+  .og-btn-archive { height:30px; padding:0 12px; border:1px solid #2f6bff; color:#2f6bff;
+    border-radius:4px; background:#fff; font-size:13px; cursor:pointer; }
+  .og-btn-archive:hover { background:#eaf1ff; }
+  .og-yarn { color:#333; font-size:13px; margin-bottom:12px; display:inline-flex; align-items:center;
+    gap:6px; cursor:pointer; }
+  .og-download { color:#2f6bff; font-size:13px; margin-bottom:12px; cursor:pointer; display:block; width:fit-content; }
+  .og-download:hover { text-decoration:underline; }
+
+  /* 日志控制台 */
+  .og-console { position:relative; background:#1e1e1e; color:#d4d4d4; border-radius:4px;
+    padding:16px 18px; font-family:"Consolas","Courier New",monospace; font-size:12.5px;
+    line-height:1.75; white-space:pre; overflow-x:auto; }
+  /* 智能报错分析入口：蓝紫渐变胶囊 + 白色文字（与查询历史统一） */
+  .og-console .analyze-btn { position:absolute; top:12px; right:16px;
+    background:linear-gradient(90deg,#3E6BF0 0%,#7C5CF0 100%); color:#fff;
+    border:none; border-radius:999px; padding:4px 14px; font-size:13px; font-weight:500;
+    line-height:1; display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; font-family:"Microsoft YaHei",sans-serif;
+    box-shadow:0 1px 3px rgba(62,107,240,.28); }
+  .og-console .analyze-btn:hover { filter:brightness(1.07); }
+
+  /* ===== 查询结果面板 ===== */
+  .qr-pane { flex:1; min-height:0; overflow-y:auto; padding:14px 16px 18px; border-top:1px solid #f0f0f0; }
+  .qr-top { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .qr-top .ai-analyze { flex-shrink:0; }
+  .qr-errmsg { flex:1; min-width:0; padding:1px 0; font-size:13px; color:#f5222d;
+    line-height:1.7; word-break:break-word; }
+  .qr-errmsg .bang { color:#f5222d; font-weight:700; margin-right:5px; }
+  .qr-errmsg .tbl { color:#f5222d; }
+  .qr-reason { font-size:13px; color:#333; line-height:1.9; margin-bottom:20px; }
+  .qr-reason .rk { font-weight:600; }
+  .qr-sec { margin-bottom:20px; }
+  .qr-sec-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .qr-sec-head .qt { font-size:14px; font-weight:600; color:#1a1a1a; }
+  .qr-sec-head .qa { font-size:13px; color:#2f6bff; cursor:pointer; }
+  .qr-sec-head .qa:hover { text-decoration:underline; }
+  .qr-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px 40px; }
+  .qr-item { display:flex; align-items:center; font-size:13px; color:#333; min-width:0; }
+  .qr-item .k { color:#666; flex-shrink:0; }
+  .qr-item .v { color:#1a1a1a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qr-item .v .tag-fail { display:inline-flex; align-items:center; background:#fff1f0; color:#f5222d;
+    border:1px solid #ffccc7; padding:2px 8px; border-radius:3px; font-size:12px; }
+  .qr-sql { border:1px solid #e8e8e8; border-radius:4px; background:#fafafa; padding:10px 12px;
+    font-family:"Consolas","Courier New",monospace; font-size:12.5px; color:#333; line-height:1.6;
+    white-space:pre-wrap; word-break:break-word; }
+  .qr-empty { color:#999; font-size:13px; text-align:center; padding:60px 0; }
+
+  /* ===== 数据可视化 · 图表配置 ===== */
+  .viz-top-tip { display:flex; align-items:center; gap:10px; padding:9px 16px; flex-shrink:0;
+    font-size:13px; color:#595959; background:#EBF3FF; border-bottom:1px solid #d6e4ff; flex-wrap:wrap; }
+  .viz-top-tip .divider { color:#d9d9d9; }
+  .viz-top-tip .lnk-blue { color:#1677ff; cursor:pointer; }
+  .viz-top-tip .lnk-blue:hover { text-decoration:underline; }
+  .viz-top-tip .warn { color:#fa8c16; }
+  .viz-body { flex:1; min-height:0; display:flex; overflow:hidden; }
+  .viz-left { width:360px; flex-shrink:0; border-right:1px solid #f0f0f0; display:flex; flex-direction:column; min-height:0; }
+  .viz-tabs { height:40px; display:flex; align-items:center; gap:22px; padding:0 16px; border-bottom:1px solid #f0f0f0; flex-shrink:0; }
+  .viz-tabs .vt { font-size:13px; color:#666; cursor:pointer; height:40px; display:flex; align-items:center; }
+  .viz-tabs .vt.active { color:#2f6bff; border-bottom:2px solid #2f6bff; font-weight:500; }
+  .viz-src { padding:14px 16px; display:flex; flex-direction:column; min-height:0; flex:1; }
+  .viz-select { height:30px; border:1px solid #d9d9d9; border-radius:4px; padding:0 10px; display:flex;
+    align-items:center; justify-content:space-between; font-size:13px; color:#333; cursor:pointer; }
+  .viz-code { margin-top:12px; flex:1; min-height:140px; border:1px solid #eee; border-radius:4px; overflow:auto;
+    display:flex; font-family:"Consolas","Courier New",monospace; font-size:13px; }
+  .viz-code .gutter { background:#fafafa; color:#999; text-align:right; padding:8px 8px 8px 0; user-select:none;
+    border-right:1px solid #eee; line-height:20px; min-width:28px; }
+  .viz-code .code { padding:8px 12px; line-height:20px; flex:1; white-space:pre; }
+  .viz-code .kw { color:#0000ff; }
+  .viz-code .ln-err { background:#fff1f0; color:#f5222d; }
+  .viz-src-foot { padding-top:12px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+  .viz-src-foot .row { display:flex; align-items:center; gap:8px; font-size:13px; color:#333; }
+  .viz-src-foot .lbl { display:inline-flex; align-items:center; gap:4px; }
+  .viz-src-foot .sel { border:1px solid #d9d9d9; border-radius:4px; height:28px; padding:0 8px; display:inline-flex;
+    align-items:center; gap:10px; color:#333; font-size:13px; }
+  .viz-src-foot .engines { display:inline-flex; align-items:center; gap:10px; }
+  .viz-src-foot .engines label { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
+  .viz-src-foot .engines input { accent-color:#2f6bff; }
+  .viz-run { align-self:flex-start; height:32px; padding:0 24px; background:#2f6bff; color:#fff; border:none;
+    border-radius:4px; font-size:13px; font-weight:500; cursor:pointer; }
+  .viz-run:hover { background:#1c56e6; }
+  .viz-right { flex:1; min-width:0; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+  .viz-right-head { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid #f0f0f0;
+    flex-shrink:0; flex-wrap:wrap; }
+  .viz-chart-title { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:#1a1a1a; }
+  .viz-head-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .viz-cache { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#333; }
+  .viz-cache .sel { border:1px solid #d9d9d9; border-radius:4px; height:28px; padding:0 8px; display:inline-flex;
+    align-items:center; gap:10px; color:#333; font-size:13px; }
+  .viz-ai { height:28px; padding:0 12px; border-radius:4px; border:1px solid #6B5CF0;
+    background:#F2EFFF; color:#6B5CF0; font-size:13px; display:inline-flex;
+    align-items:center; gap:4px; cursor:pointer; }
+  .viz-ai:hover { background:#E7E0FF; }
+  .viz-iconbtn { width:28px; height:28px; border:1px solid #e0e0e0; border-radius:4px; display:inline-flex;
+    align-items:center; justify-content:center; color:#666; cursor:pointer; background:#fff; }
+  .viz-iconbtn:hover { border-color:#2f6bff; color:#2f6bff; }
+  .viz-right-body { flex:1; min-height:0; overflow-y:auto; padding:14px 16px 20px; }
+  .viz-userline { display:flex; align-items:center; gap:8px; padding-bottom:12px; border-bottom:1px solid #f0f0f0;
+    margin-bottom:14px; }
+  .viz-userline .lbl { font-size:13px; color:#333; }
+  .viz-userline .sel { border:1px solid #d9d9d9; border-radius:4px; width:180px; height:28px; padding:0 8px;
+    display:inline-flex; align-items:center; justify-content:space-between; color:#333; font-size:13px; cursor:pointer; }
+  .viz-userline .ic { width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center;
+    color:#666; cursor:pointer; }
+  .viz-userline .ic:hover { color:#2f6bff; }
+  .viz-err { border:1px solid #ffe0e0; border-radius:4px; padding:8px 10px; margin-bottom:14px;
+    display:flex; align-items:flex-start; gap:10px; background:#fff; }
+  .viz-err .emsg { flex:1; min-width:0; font-size:12.5px; color:#f5222d; line-height:1.7; word-break:break-word; }
+  .viz-log { background:#fafafa; border:1px solid #f0f0f0; border-radius:4px; padding:12px 14px;
+    font-family:"Consolas","Courier New",monospace; font-size:12px; color:#444; line-height:1.8;
+    white-space:pre-wrap; word-break:break-word; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ Vega 视图 ============ -->
+  <div id="vegaView" class="view">
+
+  <!-- 顶部导航 -->
+  <div class="topbar">
+    <div class="hamburger">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </div>
+    <div class="portal-name">数据门户</div>
+    <div class="qa-select"><span class="dot"></span>qa_sa
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+    <div class="home">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9.5 21v-6h5v6"></path></svg>
+      首页
+    </div>
+    <div class="search-box">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+      搜索看板、作业、数据表关键字
+    </div>
+    <div class="right-tools">
+      <div class="ai-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8 9.5 9.5 0 0 1-4-.9L3 20l1.4-3.9A8.5 8.5 0 0 1 21 11.5Z"></path></svg>
+        智能助手
+      </div>
+      <span class="ticon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      </span>
+      <span class="ticon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      </span>
+      <span class="ticon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+      </span>
+      <div class="user"><span class="avatar">张</span>张三
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- 左侧菜单 -->
+    <div class="sidebar">
+      <div class="logo"><span class="v">V</span>Vega</div>
+      <div class="menu-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m7 15 3-4 3 3 5-6"></path></svg>
+        数据探索
+        <span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+      </div>
+      <div class="submenu">
+        <div class="sub-item" id="gotoSqlLab">SQL 实验室</div>
+      </div>
+      <div class="menu-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        数据可视化
+        <span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+      </div>
+      <div class="submenu">
+        <div class="sub-item" id="gotoVizBoards">看板管理</div>
+        <div class="sub-item" id="gotoVizChart">图表管理</div>
+      </div>
+
+      <!-- ===== Omega 目录 ===== -->
+      <div class="omega-divider">
+        <span class="og-logo">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path></svg>
+        </span>
+        Omega
+      </div>
+      <div class="menu-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        数据开发
+        <span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></span>
+      </div>
+      <div class="submenu">
+        <div class="sub-item" id="gotoOmegaInstance">作业实例</div>
+      </div>
+    </div>
+
+    <!-- 主内容 -->
+    <div class="main">
+      <!-- 面包屑 -->
+      <div class="breadcrumb-row">
+        <span class="collapse-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+        </span>
+        <span class="crumb">数据探索 / SQL 实验室</span>
+        <div class="global-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+          全局搜索看板、图表、数据模型
+        </div>
+        <div class="tools">
+          <span class="t">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            SQL生成
+          </span>
+          <span class="t">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+            切换为交互式工作表
+          </span>
+          <span class="t gray">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>
+          </span>
+          <span class="t gray" style="font-style:italic;font-weight:600;">fx</span>
+          <span class="t gray">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"></path></svg>
+          </span>
+        </div>
+      </div>
+
+      <!-- tab -->
+      <div class="tab-row">
+        <div class="tab">默认工作表</div>
+        <div class="add">+</div>
+      </div>
+
+      <!-- 工作区 -->
+      <div class="workspace">
+        <!-- 数据源 -->
+        <div class="datasource">
+          <div class="ds-select"><span>Hive - qa</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="ds-search">
+            <input placeholder="搜索集群名/数据库名/表名">
+            <div class="refresh">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            </div>
+          </div>
+          <div class="tree">
+            <div class="tree-node db">
+              <span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="7" rx="1.5"></rect><rect x="2" y="14" width="20" height="7" rx="1.5"></rect><line x1="6" y1="6.5" x2="6.01" y2="6.5"></line><line x1="6" y1="17.5" x2="6.01" y2="17.5"></line></svg></span>
+              SA Dijiang
+            </div>
+            <div class="tree-node db indent-1">
+              <span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path></svg></span>
+              qa
+            </div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>1</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>123</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>1234</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>12345</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>123_test</div>
+            <div class="tree-node indent-2"><span class="tw leaf"><svg width="10" height="10" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>a_multipartitioned_table</div>
+            <div class="tree-node indent-2"><span class="tw leaf"><svg width="10" height="10" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>abc</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>ac_test_20251022</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>ac_test_20260106</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>ac_test_online_251029</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>ac_test_online_25102901</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1747278199</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1747278226</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1747299808</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1747300060</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1748342063</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1748346863</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1748347088</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1748347094</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1748401755</div>
+            <div class="tree-node indent-2"><span class="tw"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></span>actest_create_temp_1758772838</div>
+          </div>
+        </div>
+
+        <!-- 编辑器 -->
+        <div class="editor-area">
+          <div class="editor-tabs">
+            <div class="et active">SQL</div>
+            <div class="et">交互式</div>
+          </div>
+          <div class="code-editor">
+            <div class="gutter"><div>1</div><div>2</div><div>3</div></div>
+            <div class="code">
+              <div><span class="kw">select</span> *</div>
+              <div><span class="kw">from</span> game_operation</div>
+            </div>
+          </div>
+
+          <!-- 工具栏 -->
+          <div class="editor-toolbar">
+            <div class="btn primary">运行</div>
+            <div class="btn">格式化</div>
+            <div class="btn split">保存
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="btn">生成取数任务</div>
+            <div class="spacer"></div>
+            <div class="field">结果条数 <span class="sel">1 万 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span></div>
+            <div class="field">执行用户
+              <span class="info-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span>
+              <span class="sel">个人用户 - zhangsan <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+            </div>
+            <div class="field">查询引擎
+              <span class="info-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span>
+              <div class="engines">
+                <label><input type="checkbox" checked="">Presto</label>
+                <label><input type="checkbox" checked="">Spark3</label>
+                <label><input type="checkbox" checked="">Hive</label>
+              </div>
+            </div>
+            <span class="more">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+            </span>
+          </div>
+
+          <!-- 历史查询 -->
+          <div class="history tab-pane" id="paneHistory" data-tab="history">
+            <div class="h-title">历史查询</div>
+            <div class="filters">
+              <div class="fl">关键字：<input placeholder="输入关键字，回车搜索" style="width:150px"></div>
+              <div class="fl">提交人：<div class="fake-input" style="width:150px;justify-content:space-between">支持输入进行搜索 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div></div>
+              <div class="fl">提交时间：<div class="fake-input time-input">2026-08-29 10:13:40 → 2026-09-28 23:59:59 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div></div>
+              <div class="fl">状态：<div class="fake-input state-input">请选择 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div></div>
+              <span class="reset">重置</span>
+            </div>
+            <div class="table">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:80px">提交人</th>
+                    <th style="width:120px">查询名称</th>
+                    <th>SQL / 查询语句</th>
+                    <th style="width:130px">状态</th>
+                    <th style="width:170px">提交时间</th>
+                    <th style="width:110px">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>张三</td>
+                    <td></td>
+                    <td class="sql">select *
+from game_operation
+</td>
+                    <td><span class="status-cell"><span class="tag-fail">查询失败</span><span class="ai-analyze" data-qid="q1">AI 诊断</span></span></td>
+                    <td>2026-09-28 10:14:36</td>
+                    <td class="ops"><span class="op">查看</span><span class="op">分享</span></td>
+                  </tr>
+                  <tr>
+                    <td>张三</td>
+                    <td>日活统计</td>
+                    <td class="sql">select dt, count(distinct uid) as dau
+from game_operation
+group by dt</td>
+                    <td><span class="tag-success">查询成功</span></td>
+                    <td>2026-09-28 09:52:18</td>
+                    <td class="ops"><span class="op">查看</span><span class="op">分享</span></td>
+                  </tr>
+                  <tr>
+                    <td>李四</td>
+                    <td>付费留存</td>
+                    <td class="sql">select role_id, pay_amount
+from user_pay
+where dt = '2026-09-27'</td>
+                    <td><span class="tag-running">运行中</span></td>
+                    <td>2026-09-28 09:30:05</td>
+                    <td class="ops"><span class="op">查看</span><span class="op">分享</span></td>
+                  </tr>
+                  <tr>
+                    <td>王五</td>
+                    <td>渠道分析</td>
+                    <td class="sql">select channel, count(*) as cnt
+from register_log
+group by channel</td>
+                    <td><span class="tag-success">查询成功</span></td>
+                    <td>2026-09-27 18:22:41</td>
+                    <td class="ops"><span class="op">查看</span><span class="op">分享</span></td>
+                  </tr>
+                  <tr>
+                    <td>张三</td>
+                    <td>次日留存</td>
+                    <td class="sql">select dt, retention_1d
+from retention_stat
+order by dt desc</td>
+                    <td><span class="status-cell"><span class="tag-fail">查询失败</span><span class="ai-analyze" data-qid="q2">AI 诊断</span></span></td>
+                    <td>2026-09-27 15:08:12</td>
+                    <td class="ops"><span class="op">查看</span><span class="op">分享</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 查询结果 -->
+          <div class="qr-pane tab-pane" id="paneResult" data-tab="result" style="display:none">
+            <div class="qr-top">
+              <span class="ai-analyze" data-qid="q1">AI 诊断</span>
+              <div class="qr-errmsg"><span class="bang">!</span>Error while compiling statement: FAILED: SemanticException [Error 10001]: Line 1:15 Table not found '<span class="tbl">game_operation</span>'</div>
+            </div>
+            <div class="qr-reason">
+              <span class="rk">报错原因：</span>原因：SQL 中引用的表 game_operation 不存在，或当前用户无该表的访问权限。 解决：先确认表名 / 库名拼写是否正确、目标表是否存在，并检查当前用户是否具备该表权限；具体原因和建议可点击上方「AI 诊断」查看。
+            </div>
+
+            <div class="qr-sec">
+              <div class="qr-sec-head"><span class="qt">查询信息</span><span class="qa" data-share="1">分享查询</span></div>
+              <div class="qr-grid">
+                <div class="qr-item"><span class="k">提交人：</span><span class="v">张三 - zhangsan</span></div>
+                <div class="qr-item"><span class="k">查询状态：</span><span class="v"><span class="tag-fail">查询失败</span></span></div>
+                <div class="qr-item"><span class="k">提交时间：</span><span class="v">2026-09-28 10:14:36</span></div>
+                <div class="qr-item"><span class="k">查询耗时：</span><span class="v">12.45 秒</span></div>
+                <div class="qr-item"><span class="k">数据源：</span><span class="v">Hive - dayu</span></div>
+                <div class="qr-item"><span class="k">查询id：</span><span class="v">e3a91c7b205f4d8e9a1b0c6d</span></div>
+                <div class="qr-item"><span class="k">查询引擎：</span><span class="v">presto.hive.spark3</span></div>
+                <div class="qr-item"><span class="k">执行用户：</span><span class="v">张三 - zhangsan</span></div>
+              </div>
+            </div>
+
+            <div class="qr-sec">
+              <div class="qr-sec-head"><span class="qt">查询语句</span><span class="qa" id="qrToggle">收起</span></div>
+              <div class="qr-sql" id="qrSql">select * from game_operation</div>
+            </div>
+          </div>
+
+          <!-- 取数任务管理 -->
+          <div class="qr-pane tab-pane" id="paneTasks" data-tab="tasks" style="display:none">
+            <div class="qr-empty">暂无取数任务</div>
+          </div>
+
+          <!-- 底部标签 -->
+          <div class="bottom-tabs">
+            <div class="bt active" data-tab="history">历史查询</div>
+            <div class="bt" data-tab="result">查询结果</div>
+            <div class="bt" data-tab="tasks">取数任务管理</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /#vegaView -->
+
+  <!-- ============ Omega 视图（作业实例 / 实例详情） ============ -->
+  <div id="omegaView" class="view" style="display:none">
+    <!-- 顶部导航 -->
+    <div class="topbar">
+      <div class="hamburger">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </div>
+      <div class="portal-name" data-back="vega" style="cursor:pointer" title="返回数据门户">数据门户</div>
+      <div class="qa-select"><span class="dot"></span>qa_sa
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+      <div class="home" data-back="vega">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9.5 21v-6h5v6"></path></svg>
+        首页
+      </div>
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+        搜索看板、作业、数据表关键字
+      </div>
+      <div class="right-tools">
+        <div class="ai-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8 9.5 9.5 0 0 1-4-.9L3 20l1.4-3.9A8.5 8.5 0 0 1 21 11.5Z"></path></svg>
+          智能助手
+        </div>
+        <span class="ticon">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </span>
+        <span class="ticon">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </span>
+        <span class="ticon">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+        </span>
+        <div class="user"><span class="avatar">宋</span>宋倩
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="body">
+      <!-- 左侧菜单：Omega -->
+      <div class="sidebar">
+        <div class="logo">
+          <span class="og-logo-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path></svg>
+          </span>
+          Omega
+        </div>
+        <div class="menu-item">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          工作台
+          <span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </div>
+        <div class="menu-item">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          数据开发
+          <span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></span>
+        </div>
+        <div class="submenu">
+          <div class="sub-item">Data Studio <span class="beta">beta</span></div>
+          <div class="sub-item">作业列表</div>
+          <div class="sub-item">工作流管理 <span class="beta">beta</span></div>
+          <div class="sub-item">作业模板 <span class="beta">beta</span></div>
+          <div class="sub-item active">作业实例</div>
+          <div class="sub-item">工作流实例 <span class="beta">beta</span></div>
+          <div class="sub-item">补数据实例</div>
+          
+          <div class="sub-item">标签管理</div>
+          
+        </div>
+        <div class="menu-item">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+          智能监控
+          <span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </div>
+        <div class="menu-item">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"></path></svg>
+          数据管理
+          <span class="arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </div>
+        
+        
+        
+        
+      </div>
+
+      <!-- 主内容：实例详情 -->
+      <div class="main">
+        <!-- 面包屑 -->
+        <div class="og-crumb-row">
+          <span class="fold">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+          </span>
+          <span class="path">数据开发 / 作业实例 / 实例详情</span>
+          <div class="right">
+            <span class="r">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+              找值班
+            </span>
+            <span class="r">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              用户群
+            </span>
+            <span class="r">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>
+              文档
+            </span>
+          </div>
+        </div>
+
+        <!-- 操作行 -->
+        <div class="og-action-row">
+          <div class="og-btn-rerun">重跑</div>
+          <div class="right">
+            <div class="og-btn-line">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              刷新
+            </div>
+            <div class="og-btn-line">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="18" r="3"></circle><path d="M9 6h6a3 3 0 0 1 3 3v6"></path></svg>
+              依赖图
+            </div>
+          </div>
+        </div>
+
+        <!-- tabs -->
+        <div class="og-tabs">
+          <div class="t">实例信息</div>
+          <div class="t">作业配置</div>
+          <div class="t active">作业日志</div>
+          <div class="t">资源使用</div>
+        </div>
+
+        <!-- 日志区 -->
+        <div class="og-log-area">
+          <div class="og-log-ctrl">
+            <span class="lbl">历史日志</span>
+            <span class="fake-input">2026-09-29 10:01:12
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </span>
+            <span class="lbl">日志定位</span>
+            <label class="og-radio"><input type="radio" name="oglog">warning</label>
+            <label class="og-radio"><input type="radio" name="oglog">error</label>
+            <label class="og-radio"><input type="radio" name="oglog">自定义</label>
+            <button class="og-btn-archive">恢复归档日志</button>
+          </div>
+          <div class="og-yarn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            YARN 资源使用
+          </div>
+          <span class="og-download">点击下载日志</span>
+          <div class="og-console"><button class="analyze-btn" id="ogAnalyze">AI 诊断</button>===== Setup env started at 2026-09-29 10:01:12.536990+08:00 =====
+===== Setup env finished at 2026-09-29 10:01:12.537083+08:00 =====
+===== Program started at 2026-09-29 10:01:12.546961+08:00 =====
+--- Environment Setup for Kerberos ---
++ export kerberos env
++ export GDC_OMEGA_GROUP=[secret]
++ export GDC_OMEGA_KRB_PASSWORD=[secret]
++ export GDC_OMEGA_KRB_USER=[secret]
++ export KRB_POSTFIX=[secret]
+
+--- Kerberos Authentication ---
+Kerberos setup succeeded. Logged in as 'qa_sa'.
+Default principal: qa_sa/scheduler@NIE.NETEASE.COM.
+
+Valid starting       Expires              Service principal
+09/29/26 10:01:12  10/02/26 10:01:12  krbtgt/NIE.NETEASE.COM@NIE.NETEASE.COM
+        renew until 10/06/26 10:01:12
+
+===== Receive container event. status=create, time=1790647272 =====
+===== Receive container event. status=attach, time=1790647272 =====
+--- Environment Setup ---
++ export COLUMNS="1024"
++ export COST_MYSQL_URI_DAYU_CA="mysql://costinfo_rw:221b6e9869b79fd7x@gdc-kronos-30045-m.hz.dumbo.nie.netease.com:3306/costinfo"
++ export DATA_END_TIME="20260929-000000"
++ export DATA_START_TIME="20260928-000000"
++ export DAYU_MONGODB_DAYU_CA="mongodb://dayu:hHQFJqt6@10.217.0.230:21781/dayu"
++ export DB_COSTINFO_PW_DAYU_CA="mysql://dayu_cost:0sZ7X1rMbzFxKQB8@gdc-streamingdev-100323-m.hz1.dumbo.nie.netease.com:3306/costinfo"</div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /#omegaView -->
+
+  <!-- ============ 数据可视化 · 图表配置 视图（内容会被搬进 Vega 侧边栏下的主区） ============ -->
+  <div id="vizView" class="view" style="display:none">
+    <div class="main">
+      <div class="breadcrumb-row">
+        <span class="collapse-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+        </span>
+        <span class="crumb">数据可视化 / 图表管理 / 图表配置</span>
+        <div class="global-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+          全局搜索看板、图表、数据模型
+        </div>
+      </div>
+
+      <div class="viz-top-tip">
+        <span>绘制图表仅支持获取前 10w 条数据，超过 10w 条请先作【预聚合】。如需配合请 <span class="lnk-blue">点此联系值班</span>。</span>
+        <span class="divider">|</span>
+        <span class="warn">编辑完成后请及时保存，避免配置丢失</span>
+      </div>
+
+      <div class="viz-body">
+        <div class="viz-left">
+          <div class="viz-tabs">
+            <div class="vt active">数据来源</div>
+            <div class="vt">可视化配置</div>
+          </div>
+          <div class="viz-src">
+            <div class="viz-select">Hive - qa
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="viz-code">
+              <div class="gutter"><div>1</div><div>2</div><div>3</div></div>
+              <div class="code"><div><span class="kw">SELECT</span> *</div><div><span class="kw">FROM</span> game_op</div><div class="ln-err">1</div></div>
+            </div>
+            <div class="viz-src-foot">
+              <div class="row"><span class="lbl">执行用户: <span class="info-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span></span>
+                <span class="sel">个人用户 - zhangsan<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              </div>
+              <div class="row"><span class="lbl">查询引擎: <span class="info-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span></span>
+                <span class="engines">
+                  <label><input type="checkbox" checked="">Presto</label>
+                  <label><input type="checkbox" checked="">Spark3</label>
+                  <label><input type="checkbox" checked="">Hive</label>
+                </span>
+              </div>
+              <button class="viz-run">运行</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="viz-right">
+          <div class="viz-right-head">
+            <span class="viz-chart-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              充值总金额
+            </span>
+            <div class="viz-head-right">
+              <span class="viz-cache">数据缓存
+                <span class="info-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span>
+                <span class="sel">27 天 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              </span>
+              <button class="viz-ai"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"></path></svg>AI</button>
+              <span class="viz-iconbtn" title="智能配置"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"></path></svg></span>
+              <span class="viz-iconbtn" title="筛选"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg></span>
+              <span class="viz-iconbtn" title="刷新"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg></span>
+              <span class="viz-iconbtn" title="下载"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></span>
+              <span class="viz-iconbtn" title="分享"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></span>
+              <span class="viz-iconbtn" title="预览"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+              <span class="viz-iconbtn" title="保存"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg></span>
+              <span class="viz-iconbtn" title="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></span>
+            </div>
+          </div>
+          <div class="viz-right-body">
+            <div class="viz-userline">
+              <span class="lbl">用户:</span>
+              <span class="sel">全部 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+              <span class="ic" title="编辑"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span>
+              <span class="ic" title="删除"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>
+            </div>
+            <div class="viz-err">
+              <span class="ai-analyze" data-qid="vizchart">AI 诊断</span>
+              <div class="emsg">SQL syntax invalid: line 3:0 mismatched input '1' expecting {&lt;EOF&gt;, ';'} gdcsql error code is : 401. Error message is : sql parse error. please see details here : https://g.126.fm/009RX92</div>
+            </div>
+            <div class="qr-reason"><span class="rk">报错原因：</span>原因：SQL 第 3 行多出字符 "1"，导致解析失败。 解决：删除或修正第 3 行 "1"，检查分号；可用 smart rewrite 修复后重跑。具体原因和建议可点击智能报错分析查看。</div>
+            <div class="viz-log">2026-09-29 15:56:02 - Submit Query SQL=""" SELECT * FROM game_op 1 LIMIT 100000 """
+[vega] host=dijiangsa.sql.gdc.nie.netease.com port=10300
+exit while
+2026-09-29 15:56:02 - Query SQL finished. Elapsed="0.01s", SQL=""" SELECT * FROM game_op 1 LIMIT 100000 """
+2026-09-29 15:56:02 - Query SQL failed. Message="SQL syntax invalid: line 3:0 mismatched input '1' expecting {&lt;EOF&gt;, ';'} gdcsql error code is : 401. Error message is : sql parse error. please see details here : https://g.126.fm/009RX92", SQL=""" SELECT * FROM game_op 1 LIMIT 100000 """
+2026-09-29 15:56:02 - Query status info. state = `failed`, percent = `0.0`</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AI 诊断弹框（简易：补充说明 → 诊断 → 进入 POPO 群） ===== -->
+<div class="modal-mask" id="analyzeMask">
+  <div class="modal simple">
+    <div class="modal-head">
+      <div class="m-headtext">
+        <div class="m-titleline"><span class="m-title">AI 诊断</span><span class="m-ai">AI</span></div>
+        <div class="m-sub">补充问题描述后诊断，或直接诊断</div>
+      </div>
+      <span class="m-close" data-close="1">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </span>
+    </div>
+    <div class="modal-body simple" id="modalBody"><!-- 动态填充 --></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  // 各入口对应的报错信息（点击 AI 诊断时展示，用户可补充说明后再诊断）
+  var DATA = {
+    q1: {
+      errMsg: "Error: Table or view not found: game_operation; line 2:7\n'game_operation'"
+    },
+    q2: {
+      errMsg: "Error: Column 'retention_1d' cannot be resolved in table 'retention_stat'; line 1:12\n'retention_1d'"
+    },
+    // 作业实例 · 作业日志报错
+    joblog: {
+      errMsg: "===== Program exited with exit code 137 =====\nCaused by: java.lang.OutOfMemoryError: Java heap space\n  at org.apache.spark.sql.execution.SparkPlan.executeCollect(SparkPlan.scala:430)\nCaused by: org.apache.spark.SparkException: Job aborted due to stage failure: Task 12 in stage 2.0 failed 4 times\nContainer killed by YARN for exceeding physical memory limits: 4.5 GB of 4 GB used."
+    },
+    // 数据可视化 · 图表配置报错
+    vizchart: {
+      errMsg: "SQL syntax invalid: line 3:0 mismatched input '1' expecting {<EOF>, ';'} gdcsql error code is : 401. Error message is : sql parse error. please see details here : https://g.126.fm/009RX92"
+    }
+  };
+
+  var mask = document.getElementById('analyzeMask');
+  var body = document.getElementById('modalBody');
+  var toast = document.getElementById('toast');
+  var currentQid = null;
+  var groupCreated = false;   // 是否已创建 POPO 群
+  var groupId = '';           // 已创建的群 ID
+  var diagToken = 0;          // 诊断流程令牌，防止重复触发
+
+  var POPO_ICON = 'https://brainmaker.s3v2.nie.netease.com/brainmaker/prod/1790586534136-image.png';
+  var CHECK_ICON = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ toast.classList.remove('show'); }, 1900);
+  }
+
+  function copyText(text, okMsg){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ showToast(okMsg); }, function(){ fallbackCopy(text, okMsg); });
+    } else { fallbackCopy(text, okMsg); }
+  }
+  function fallbackCopy(text, okMsg){
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast(okMsg); } catch(e) { showToast('复制失败，请手动选择'); }
+    document.body.removeChild(ta);
+  }
+
+  // 第一步：简易表单 —— 展示报错信息 + 补充说明，可先补充再诊断，也可直接诊断
+  function renderForm(){
+    var d = DATA[currentQid] || { errMsg: '' };
+    body.innerHTML =
+      '<div class="diag-err">' +
+        '<div class="de-h"><span>报错信息</span><span class="de-copy" id="copyErr">复制</span></div>' +
+        '<div class="de-t">' + esc(d.errMsg) + '</div>' +
+      '</div>' +
+      '<div class="diag-field">' +
+        '<div class="df-label">补充 / 提问其他问题<span class="opt">（选填）</span></div>' +
+        '<textarea id="diagNote" placeholder="补充问题背景，例如：昨天还能查，今天突然报错；或说明你希望排查的方向…"></textarea>' +
+      '</div>' +
+      '<div class="diag-foot">' +
+        '<button class="btn-ghost" data-close="1">取消</button>' +
+        '<button class="btn-consult" id="diagStart">直接诊断</button>' +
+      '</div>';
+    var c = document.getElementById('copyErr');
+    if (c) c.addEventListener('click', function(){ copyText(d.errMsg, '报错信息已复制'); });
+    var s = document.getElementById('diagStart');
+    if (s) s.addEventListener('click', startDiagnose);
+  }
+
+  // 第二步：诊断中反馈
+  function startDiagnose(){
+    var noteEl = document.getElementById('diagNote');
+    var note = noteEl ? noteEl.value.trim() : '';
+    var token = ++diagToken;
+    body.innerHTML =
+      '<div class="diag-loading"><span class="spinner"></span>' +
+        '<span>AI 正在诊断' + (note ? '（已结合你的补充说明）' : '') + '…</span></div>';
+    setTimeout(function(){
+      if (token !== diagToken || !mask.classList.contains('show')) return;
+      renderResult(note);
+    }, 1300);
+  }
+
+  // 第三步：诊断完成 —— 提示进入 POPO 群
+  function renderResult(note){
+    body.innerHTML =
+      '<div class="diag-result">' +
+        '<div class="dr-icon">' + CHECK_ICON + '</div>' +
+        '<div class="dr-title">诊断完成</div>' +
+        '<div class="dr-desc">AI 已生成诊断结果' + (note ? '，并已带上你的补充说明' : '') +
+          '。<br>请进入 <b>POPO 群</b> 查看详情，值班同学会在此跟进处理。</div>' +
+        '<div class="diag-actions">' +
+          '<button class="btn-ghost" id="diagAgain">重新诊断</button>' +
+          '<button class="btn-consult" id="enterGroup">' +
+            '<img src="' + POPO_ICON + '" alt="POPO 群" style="width:16px;height:16px;border-radius:50%;display:block">进入 POPO 群' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    var again = document.getElementById('diagAgain');
+    if (again) again.addEventListener('click', renderForm);
+    var enter = document.getElementById('enterGroup');
+    if (enter) enter.addEventListener('click', enterGroup);
+  }
+
+  // 进入 POPO 群（首次进入自动创建群）
+  function enterGroup(){
+    if (!groupCreated){
+      groupCreated = true;
+      groupId = 'SA-VEGA-' + Date.now().toString().slice(-6);
+      showToast('已为你创建 POPO 群（' + groupId + '），正在进入…');
+    } else {
+      showToast('正在进入 POPO 群（' + groupId + '）…');
+    }
+    // 实际接入时替换为打开 POPO 群链接，例如：
+    // window.open('popo://team/' + groupId, '_blank');
+  }
+
+  function openModal(qid){
+    currentQid = qid || 'q1';
+    if (!DATA[currentQid]) currentQid = 'q1';
+    mask.classList.add('show');
+    renderForm();
+  }
+
+  function closeModal(){ mask.classList.remove('show'); diagToken++; }
+
+  // 绑定所有 AI 诊断入口（查询历史 + 作业日志）
+  document.querySelectorAll('.ai-analyze').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      openModal(btn.getAttribute('data-qid') || 'q1');
+    });
+  });
+  var ogAnalyzeBtn = document.getElementById('ogAnalyze');
+  if (ogAnalyzeBtn){
+    ogAnalyzeBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      openModal('joblog');
+    });
+  }
+
+  // 关闭：点击关闭图标 / 取消 / 遮罩 / Esc
+  mask.addEventListener('click', function(e){
+    if ((e.target.closest && e.target.closest('[data-close]')) || e.target === mask) closeModal();
+  });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal(); });
+})();
+</script>
+<script>
+// ===== 主内容面板切换：Vega 侧边栏 + 顶栏常驻，仅右侧主区切换 =====
+(function(){
+  var vegaView = document.getElementById('vegaView');
+  var omegaView = document.getElementById('omegaView');
+  var vizView = document.getElementById('vizView');
+  var toast = document.getElementById('toast');
+  if (!vegaView) return;
+
+  var vegaMainEl = vegaView.querySelector('.main');
+  if (!vegaMainEl) return;
+
+  function showToast(msg){
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._t2);
+    toast._t2 = setTimeout(function(){ toast.classList.remove('show'); }, 1900);
+  }
+
+  // 1) 把 Vega 现有主内容包进 #vegaMain 面板
+  var vegaPanel = document.createElement('div');
+  vegaPanel.id = 'vegaMain';
+  vegaPanel.className = 'main-panel';
+  while (vegaMainEl.firstChild) vegaPanel.appendChild(vegaMainEl.firstChild);
+  vegaMainEl.appendChild(vegaPanel);
+
+  // 2) 把 Omega 实例详情内容搬进 #omegaMain 面板（复用 Vega 顶栏 + 侧边栏，不再隐藏 Vega 目录）
+  var omegaPanel = document.createElement('div');
+  omegaPanel.id = 'omegaMain';
+  omegaPanel.className = 'main-panel';
+  omegaPanel.style.display = 'none';
+  if (omegaView){
+    var omegaMainEl = omegaView.querySelector('.main');
+    if (omegaMainEl){ while (omegaMainEl.firstChild) omegaPanel.appendChild(omegaMainEl.firstChild); }
+    if (omegaView.parentNode) omegaView.parentNode.removeChild(omegaView); // 丢弃多余的 Omega 独立外壳
+  }
+  vegaMainEl.appendChild(omegaPanel);
+
+  // 2.5) 数据可视化 · 图表配置 面板
+  var vizPanel = document.createElement('div');
+  vizPanel.id = 'vizMain';
+  vizPanel.className = 'main-panel';
+  vizPanel.style.display = 'none';
+  if (vizView){
+    var vizMainEl = vizView.querySelector('.main');
+    if (vizMainEl){ while (vizMainEl.firstChild) vizPanel.appendChild(vizMainEl.firstChild); }
+    if (vizView.parentNode) vizView.parentNode.removeChild(vizView);
+  }
+  vegaMainEl.appendChild(vizPanel);
+
+  // 3) 侧边栏菜单项引用（都在 Vega 侧边栏内，默认均保持蓝底高亮）
+  var instItem = document.getElementById('gotoOmegaInstance');   // Omega 目录 · 作业实例
+
+  var vizItem = document.getElementById('gotoVizChart');   // 数据可视化 · 图表管理
+
+  var PANELS = [vegaPanel, omegaPanel, vizPanel];
+  function hideAll(){ PANELS.forEach(function(p){ p.style.display = 'none'; }); }
+  function showVega(){ hideAll(); vegaPanel.style.display = 'flex'; }
+  function showOmega(){ hideAll(); omegaPanel.style.display = 'flex'; }
+  function showViz(){ hideAll(); vizPanel.style.display = 'flex'; }
+
+  var sqlItem = document.getElementById('gotoSqlLab');   // 数据探索 · SQL 实验室
+
+  // 目录高亮：仅在进入对应页面时高亮该子项
+  function setActive(el){
+    vegaView.querySelectorAll('.submenu .sub-item').forEach(function(x){ x.classList.remove('active'); });
+    if (el) el.classList.add('active');
+  }
+  function goVega(){ showVega(); setActive(sqlItem); }
+  function goOmega(){ showOmega(); setActive(instItem); }
+  function goViz(){ showViz(); setActive(vizItem); }
+
+  if (instItem) instItem.addEventListener('click', goOmega);
+  if (sqlItem) sqlItem.addEventListener('click', goVega);
+  if (vizItem) vizItem.addEventListener('click', goViz);
+
+  goVega();   // 默认进入 SQL 实验室，并高亮对应目录
+
+  // 4) Omega 作业实例 · 日志「智能报错分析」
+  //    点击后弹出与 SQL 实验室一致的「智能分析」弹窗，绑定逻辑在上方脚本统一处理
+})();
+</script>
+
+
+<script>
+// ===== 底部标签切换：历史查询 / 查询结果 / 取数任务管理 =====
+(function(){
+  var PANES = { history:'paneHistory', result:'paneResult', tasks:'paneTasks' };
+  function activate(key){
+    document.querySelectorAll('.bottom-tabs .bt').forEach(function(t){
+      t.classList.toggle('active', t.getAttribute('data-tab') === key);
+    });
+    Object.keys(PANES).forEach(function(k){
+      var el = document.getElementById(PANES[k]);
+      if (!el) return;
+      if (k === key){ el.style.display = (k === 'history') ? 'flex' : 'block'; }
+      else { el.style.display = 'none'; }
+    });
+  }
+  document.querySelectorAll('.bottom-tabs .bt').forEach(function(t){
+    t.addEventListener('click', function(){ activate(t.getAttribute('data-tab')); });
+  });
+
+  // 查询语句 收起 / 展开
+  var toggle = document.getElementById('qrToggle');
+  var sql = document.getElementById('qrSql');
+  if (toggle && sql){
+    toggle.addEventListener('click', function(){
+      var hidden = sql.style.display === 'none';
+      sql.style.display = hidden ? '' : 'none';
+      toggle.textContent = hidden ? '收起' : '展开';
+    });
+  }
+
+  // 分享查询
+  var share = document.querySelector('[data-share]');
+  var toastEl = document.getElementById('toast');
+  if (share && toastEl){
+    share.addEventListener('click', function(){
+      toastEl.textContent = '已复制查询链接，可分享给同事';
+      toastEl.classList.add('show');
+      clearTimeout(toastEl._shareT);
+      toastEl._shareT = setTimeout(function(){ toastEl.classList.remove('show'); }, 1900);
+    });
+  }
+})();
+</script>
+</body></html>

@@ -302,14 +302,16 @@
   .diag-foot .btn-consult { width:auto; padding:0 22px; }
   .diag-loading { display:flex; align-items:center; justify-content:center; gap:10px;
     color:#2f6bff; font-size:13px; padding:52px 0; }
-  .diag-result { text-align:center; padding:8px 4px 4px; }
-  .diag-result .dr-icon { width:56px; height:56px; margin:0 auto 14px; border-radius:50%;
+  .diag-result { text-align:center; padding:28px 12px 8px; }
+  .diag-result .dr-head { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:14px; }
+  .diag-result .dr-icon { width:46px; height:46px; flex-shrink:0; border-radius:50%;
     background:#eaf1ff; color:#2f6bff; display:flex; align-items:center; justify-content:center; }
-  .diag-result .dr-title { font-size:16px; font-weight:600; color:#1a1a1a; margin-bottom:8px; }
-  .diag-result .dr-desc { font-size:13px; color:#666; line-height:1.75; margin-bottom:20px; }
-  .diag-result .dr-desc b { color:#2f6bff; }
+  .diag-result .dr-icon svg { width:24px; height:24px; }
+  .diag-result .dr-title { font-size:18px; font-weight:600; color:#1a1a1a; margin:0; }
+  .diag-result .dr-desc { font-size:14px; color:#666; line-height:1.8; margin:0 auto 28px; max-width:420px; }
+  .diag-result .dr-desc b { color:#1a1a1a; font-weight:700; }
   .diag-actions { display:flex; align-items:center; justify-content:center; gap:12px; }
-  .diag-actions .btn-consult { width:auto; padding:0 18px; }
+  .diag-actions .btn-ghost, .diag-actions .btn-consult { width:auto; height:36px; padding:0 24px; }
 
   /* 转人工 + 快速路由 POPO 群 */
   .consult-actions { display:flex; align-items:center; gap:8px; }
@@ -1108,7 +1110,7 @@ exit while
     <div class="modal-head">
       <div class="m-headtext">
         <div class="m-titleline"><span class="m-title">AI 诊断</span><span class="m-ai">AI</span></div>
-        <div class="m-sub">补充问题描述后诊断，或直接诊断</div>
+        <div class="m-sub">可以补充问题描述，也可以直接诊断</div>
       </div>
       <span class="m-close" data-close="1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -1181,8 +1183,8 @@ exit while
         '<div class="de-t">' + esc(d.errMsg) + '</div>' +
       '</div>' +
       '<div class="diag-field">' +
-        '<div class="df-label">补充 / 提问其他问题<span class="opt">（选填）</span></div>' +
-        '<textarea id="diagNote" placeholder="补充问题背景，例如：昨天还能查，今天突然报错；或说明你希望排查的方向…"></textarea>' +
+        '<div class="df-label">补充说明，或提问其他问题<span class="opt">（选填）</span></div>' +
+        '<textarea id="diagNote" placeholder="补充一下问题背景，比如：昨天还能查，今天突然报错了…"></textarea>' +
       '</div>' +
       '<div class="diag-foot">' +
         '<button class="btn-ghost" data-close="1">取消</button>' +
@@ -1201,7 +1203,7 @@ exit while
     var token = ++diagToken;
     body.innerHTML =
       '<div class="diag-loading"><span class="spinner"></span>' +
-        '<span>AI 正在诊断' + (note ? '（已结合你的补充说明）' : '') + '…</span></div>';
+        '<span>正在诊断，请稍候…</span></div>';
     setTimeout(function(){
       if (token !== diagToken || !mask.classList.contains('show')) return;
       renderResult(note);
@@ -1210,12 +1212,14 @@ exit while
 
   // 第三步：诊断完成 —— 提示进入 POPO 群
   function renderResult(note){
+    ensureGroup();   // 诊断完成即创建 POPO 群，拿到群号
     body.innerHTML =
       '<div class="diag-result">' +
-        '<div class="dr-icon">' + CHECK_ICON + '</div>' +
-        '<div class="dr-title">诊断完成</div>' +
-        '<div class="dr-desc">AI 已生成诊断结果' + (note ? '，并已带上你的补充说明' : '') +
-          '。<br>请进入 <b>POPO 群</b> 查看详情，值班同学会在此跟进处理。</div>' +
+        '<div class="dr-head">' +
+          '<div class="dr-icon">' + CHECK_ICON + '</div>' +
+          '<div class="dr-title">诊断完成</div>' +
+        '</div>' +
+        '<div class="dr-desc">请留意popo群（<b>' + groupId + '</b>）的 AI 诊断信息</div>' +
         '<div class="diag-actions">' +
           '<button class="btn-ghost" id="diagAgain">重新诊断</button>' +
           '<button class="btn-consult" id="enterGroup">' +
@@ -1229,15 +1233,18 @@ exit while
     if (enter) enter.addEventListener('click', enterGroup);
   }
 
-  // 进入 POPO 群（首次进入自动创建群）
-  function enterGroup(){
+  // 创建 POPO 群（生成群号，仅创建一次）
+  function ensureGroup(){
     if (!groupCreated){
       groupCreated = true;
-      groupId = 'SA-VEGA-' + Date.now().toString().slice(-6);
-      showToast('已为你创建 POPO 群（' + groupId + '），正在进入…');
-    } else {
-      showToast('正在进入 POPO 群（' + groupId + '）…');
+      groupId = String(Math.floor(100000 + Math.random() * 900000));
     }
+  }
+
+  // 进入 POPO 群
+  function enterGroup(){
+    ensureGroup();
+    showToast('正在进入 POPO 群（' + groupId + '）…');
     // 实际接入时替换为打开 POPO 群链接，例如：
     // window.open('popo://team/' + groupId, '_blank');
   }
